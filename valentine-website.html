@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For You ❤️</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            overflow: hidden;
+            cursor: none;
+            background: #000;
+        }
+        
+        #cursor {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,105,180,0.8), rgba(255,20,147,0.3));
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+            box-shadow: 0 0 20px rgba(255,105,180,0.6);
+        }
+        
+        .scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+        
+        .scene.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 20px;
+            max-width: 800px;
+        }
+        
+        .poetry {
+            font-size: 1.8rem;
+            line-height: 2.2;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,105,180,0.5);
+            margin: 30px 0;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeInUp 2s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+        }
+        
+        .heart-button {
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            border: none;
+            padding: 20px 50px;
+            font-size: 1.5rem;
+            color: white;
+            border-radius: 50px;
+            cursor: none;
+            font-family: 'Dancing Script', cursive;
+            box-shadow: 0 10px 40px rgba(255,20,147,0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .heart-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 60px rgba(255,20,147,0.8);
+        }
+        
+        .heart-button::before {
+            content: '❤️';
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0;
+            transition: all 0.5s;
+        }
+        
+        .heart-button:hover::before {
+            opacity: 1;
+            transform: translateY(-50px);
+        }
+        
+        .beating-heart {
+            font-size: 8rem;
+            animation: heartbeat 1.5s infinite;
+            filter: drop-shadow(0 0 30px rgba(255,20,147,0.8));
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            10%, 30% { transform: scale(1.1); }
+            20%, 40% { transform: scale(1); }
+        }
+        
+        .lock-text {
+            font-size: 1.5rem;
+            color: #ff69b4;
+            margin: 30px 0;
+            font-family: 'Dancing Script', cursive;
+            text-shadow: 0 0 15px rgba(255,105,180,0.6);
+        }
+        
+        .star {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            cursor: none;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+        
+        .star:hover {
+            transform: scale(2);
+            background: #ff69b4;
+        }
+        
+        .memory-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, rgba(139,0,139,0.95), rgba(75,0,130,0.95));
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            color: white;
+            font-size: 1.3rem;
+            line-height: 1.8;
+            box-shadow: 0 20px 60px rgba(255,20,147,0.6);
+            z-index: 1000;
+            transition: transform 0.5s ease;
+            border: 2px solid rgba(255,105,180,0.5);
+        }
+        
+        .memory-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: none;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        
+        .close-btn:hover {
+            opacity: 1;
+        }
+        
+        .letter {
+            background: rgba(255,255,255,0.95);
+            padding: 50px;
+            border-radius: 15px;
+            max-width: 600px;
+            color: #4a0e4e;
+            font-size: 1.4rem;
+            line-height: 2;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+            position: relative;
+            border: 3px solid #ff69b4;
+        }
+        
+        .letter::before {
+            content: '💌';
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+        }
+        
+        .typed-text {
+            overflow: hidden;
+            border-right: 3px solid #ff1493;
+            white-space: nowrap;
+            animation: typing 4s steps(40, end), blink 0.75s step-end infinite;
+            display: inline-block;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink {
+            50% { border-color: transparent; }
+        }
+        
+        .yes-button {
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            border: none;
+            padding: 25px 60px;
+            font-size: 2rem;
+            color: white;
+            border-radius: 50px;
+            cursor: none;
+            font-family: 'Dancing Script', cursive;
+            box-shadow: 0 15px 50px rgba(255,20,147,0.6);
+            margin-top: 30px;
+            transition: all 0.3s;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .yes-button:hover {
+            transform: scale(1.15);
+            box-shadow: 0 20px 70px rgba(255,20,147,0.9);
+        }
+        
+        .explosion {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        .floating-heart {
+            position: absolute;
+            font-size: 2rem;
+            animation: float-up 3s ease-out forwards;
+        }
+        
+        @keyframes float-up {
+            to {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .final-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            color: #ff69b4;
+            font-family: 'Dancing Script', cursive;
+            text-shadow: 0 0 40px rgba(255,20,147,0.8);
+            z-index: 10000;
+            opacity: 0;
+            animation: fadeIn 2s 1s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            .poetry {
+                font-size: 1.3rem;
+                line-height: 1.8;
+            }
+            
+            .beating-heart {
+                font-size: 5rem;
+            }
+            
+            .letter {
+                padding: 30px;
+                font-size: 1.1rem;
+            }
+            
+            .yes-button {
+                padding: 20px 40px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="cursor"></div>
+    
+    <!-- Scene 1: Entry Portal -->
+    <div id="scene1" class="scene active" style="background: linear-gradient(135deg, #000000, #1a0033)">
+        <canvas id="canvas1" class="canvas-container"></canvas>
+        <div class="content">
+            <div class="beating-heart">❤️</div>
+            <div class="lock-text">
+                Password nahi… sirf ehsaas chahiye…<br/>
+                Agar tum ho… toh enter karo ❤️
+            </div>
+            <button class="heart-button" id="btn-scene1">Touch my heart</button>
+        </div>
+    </div>
+
+    <!-- Scene 2: Garden of Feelings -->
+    <div id="scene2" class="scene" style="background: linear-gradient(135deg, #ff6b6b, #ffd93d, #ff69b4)">
+        <canvas id="canvas2" class="canvas-container"></canvas>
+        <div class="content">
+            <div class="poetry">
+                Pehle din bas tum achi lagi thi…<br/>
+                Fir samajh nahi aaya kyun baat karna zaroori lagne laga…<br/>
+                Aur ab haal yeh hai…<br/>
+                Tum bina din adhoora lagta hai.
+            </div>
+        </div>
+    </div>
+
+    <!-- Scene 3: Memories Galaxy -->
+    <div id="scene3" class="scene" style="background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)">
+        <canvas id="canvas3" class="canvas-container"></canvas>
+        <div class="content">
+            <div class="poetry">
+                Click on the stars… har sitara ek yaad hai ❤️
+            </div>
+        </div>
+        <div id="memory-popup" class="memory-popup">
+            <button class="close-btn" id="close-memory">×</button>
+            <div id="memory-text"></div>
+        </div>
+    </div>
+
+    <!-- Scene 4: Close Feelings -->
+    <div id="scene4" class="scene" style="background: linear-gradient(135deg, #4a0e4e, #81003c)">
+        <canvas id="canvas4" class="canvas-container"></canvas>
+        <div class="content">
+            <div class="poetry">
+                Kabhi kabhi lagta hai…<br/>
+                Tum paas baith jao toh duniya mute ho jaaye…<br/>
+                Bas tumhari saanse aur meri dhadkan baat karein…<br/><br/>
+                Tumhe dekh ke bas pyaar nahi…<br/>
+                sukoon bhi aata hai.
+            </div>
+        </div>
+    </div>
+
+    <!-- Scene 5: Confession -->
+    <div id="scene5" class="scene" style="background: linear-gradient(135deg, #000000, #1a0033)">
+        <canvas id="canvas5" class="canvas-container"></canvas>
+        <div class="content">
+            <div class="letter">
+                <div class="typed-text">
+                    Shayad perfect words nahi milenge…<br/>
+                    Par perfect insaan mil gaya hai.<br/><br/>
+                    Tum sirf meri pasand nahi…<br/>
+                    meri aadat ban chuki ho.<br/><br/>
+                    <strong style="color: #ff1493; font-size: 1.6rem">Happy Valentine's Day ❤️</strong><br/><br/>
+                    Will you stay in my life… permanently?
+                </div>
+                <button class="yes-button" id="btn-yes">Yes ❤️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom cursor
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // Scene management
+        let currentScene = 1;
+        function switchScene(sceneNumber) {
+            document.querySelectorAll('.scene').forEach(scene => {
+                scene.classList.remove('active');
+            });
+            document.getElementById('scene' + sceneNumber).classList.add('active');
+            currentScene = sceneNumber;
+        }
+
+        // Scene 1: Entry Portal
+        function initScene1() {
+            const canvas = document.getElementById('canvas1');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.position.z = 5;
+            
+            // Particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 1000;
+            const positions = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 10;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                color: 0xff69b4,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particles);
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                particles.rotation.y += 0.001;
+                particles.rotation.x += 0.0005;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        // Scene 2: Garden of Feelings
+        function initScene2() {
+            const canvas = document.getElementById('canvas2');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.position.z = 5;
+            
+            // Rose petals
+            const petalGeometry = new THREE.PlaneGeometry(0.2, 0.3);
+            const petalMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff1493,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            
+            const petals = [];
+            for(let i = 0; i < 50; i++) {
+                const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+                petal.position.x = (Math.random() - 0.5) * 10;
+                petal.position.y = Math.random() * 10;
+                petal.position.z = (Math.random() - 0.5) * 5;
+                petal.userData = { 
+                    speed: 0.01 + Math.random() * 0.02,
+                    rotationSpeed: Math.random() * 0.05
+                };
+                scene.add(petal);
+                petals.push(petal);
+            }
+            
+            // Hearts
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo(0, 0.5);
+            heartShape.bezierCurveTo(0, 0.3, -0.5, 0.3, -0.5, 0);
+            heartShape.bezierCurveTo(-0.5, -0.3, 0, -0.7, 0, -1);
+            heartShape.bezierCurveTo(0, -0.7, 0.5, -0.3, 0.5, 0);
+            heartShape.bezierCurveTo(0.5, 0.3, 0, 0.3, 0, 0.5);
+            
+            const heartGeometry = new THREE.ShapeGeometry(heartShape);
+            const heartMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff69b4,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const hearts = [];
+            for(let i = 0; i < 20; i++) {
+                const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+                heart.position.x = (Math.random() - 0.5) * 8;
+                heart.position.y = (Math.random() - 0.5) * 6;
+                heart.position.z = (Math.random() - 0.5) * 3;
+                heart.scale.set(0.3, 0.3, 0.3);
+                heart.userData = {
+                    floatSpeed: 0.005 + Math.random() * 0.01,
+                    floatOffset: Math.random() * Math.PI * 2
+                };
+                scene.add(heart);
+                hearts.push(heart);
+            }
+            
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.01;
+                
+                petals.forEach(petal => {
+                    petal.position.y -= petal.userData.speed;
+                    petal.rotation.z += petal.userData.rotationSpeed;
+                    if(petal.position.y < -5) {
+                        petal.position.y = 5;
+                        petal.position.x = (Math.random() - 0.5) * 10;
+                    }
+                });
+                
+                hearts.forEach(heart => {
+                    heart.position.y += Math.sin(time + heart.userData.floatOffset) * 0.01;
+                    heart.rotation.z = Math.sin(time + heart.userData.floatOffset) * 0.2;
+                });
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        // Scene 3: Memories Galaxy
+        function initScene3() {
+            const canvas = document.getElementById('canvas3');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.position.z = 8;
+            
+            const memories = [
+                "Yaad hai pehli baar tum hansi thi…\nUs din decide ho gaya tha…\nMain phas chuka hoon ❤️",
+                "Tum good night bolti ho…\nAur meri raat actually good ho jaati hai.",
+                "Tumhari awaaz sunke din ki thakaan door ho jaati hai.",
+                "Tum randomly message karti ho…\nAur pura din ban jaata hai.",
+                "Tumhare bina kuch bhi complete nahi lagta."
+            ];
+            
+            // Stars
+            const starGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            const stars = [];
+            for(let i = 0; i < memories.length; i++) {
+                const star = new THREE.Mesh(starGeometry, starMaterial);
+                const angle = (i / memories.length) * Math.PI * 2;
+                const radius = 3;
+                star.position.x = Math.cos(angle) * radius;
+                star.position.y = Math.sin(angle) * radius;
+                star.position.z = (Math.random() - 0.5) * 2;
+                star.userData = { memoryIndex: i };
+                scene.add(star);
+                stars.push(star);
+            }
+            
+            // Galaxy particles
+            const galaxyGeometry = new THREE.BufferGeometry();
+            const galaxyCount = 2000;
+            const positions = new Float32Array(galaxyCount * 3);
+            
+            for(let i = 0; i < galaxyCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 2 + Math.random() * 4;
+                positions[i * 3] = Math.cos(angle) * radius;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                positions[i * 3 + 2] = Math.sin(angle) * radius;
+            }
+            
+            galaxyGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const galaxyMaterial = new THREE.PointsMaterial({
+                color: 0xb19cd9,
+                size: 0.02,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const galaxy = new THREE.Points(galaxyGeometry, galaxyMaterial);
+            scene.add(galaxy);
+            
+            // Mouse interaction
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            
+            canvas.addEventListener('click', (event) => {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(stars);
+                
+                if(intersects.length > 0) {
+                    const index = intersects[0].object.userData.memoryIndex;
+                    document.getElementById('memory-text').innerText = memories[index];
+                    document.getElementById('memory-popup').classList.add('show');
+                }
+            });
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                galaxy.rotation.y += 0.001;
+                stars.forEach(star => {
+                    star.rotation.y += 0.01;
+                    const scale = 1 + Math.sin(Date.now() * 0.001 + star.position.x) * 0.2;
+                    star.scale.set(scale, scale, scale);
+                });
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        // Scene 4: Close Feelings
+        function initScene4() {
+            const canvas = document.getElementById('canvas4');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.position.z = 5;
+            
+            // Breathing heart
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo(0, 1);
+            heartShape.bezierCurveTo(0, 0.6, -1, 0.6, -1, 0);
+            heartShape.bezierCurveTo(-1, -0.6, 0, -1.4, 0, -2);
+            heartShape.bezierCurveTo(0, -1.4, 1, -0.6, 1, 0);
+            heartShape.bezierCurveTo(1, 0.6, 0, 0.6, 0, 1);
+            
+            const heartGeometry = new THREE.ShapeGeometry(heartShape);
+            const heartMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff1493,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+            scene.add(heart);
+            
+            // Glow particles
+            const glowGeometry = new THREE.BufferGeometry();
+            const glowCount = 500;
+            const positions = new Float32Array(glowCount * 3);
+            
+            for(let i = 0; i < glowCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 8;
+            }
+            
+            glowGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const glowMaterial = new THREE.PointsMaterial({
+                color: 0xff69b4,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            const glow = new THREE.Points(glowGeometry, glowMaterial);
+            scene.add(glow);
+            
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.01;
+                
+                const breathe = 1 + Math.sin(time) * 0.1;
+                heart.scale.set(breathe, breathe, 1);
+                
+                glow.rotation.y += 0.002;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        // Scene 5: Confession
+        function initScene5() {
+            const canvas = document.getElementById('canvas5');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.position.z = 5;
+            
+            // Spotlight effect
+            const light = new THREE.PointLight(0xff69b4, 2, 100);
+            light.position.set(0, 0, 5);
+            scene.add(light);
+            
+            // Ambient particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 300;
+            const positions = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 10;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                color: 0xffd700,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particles);
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                particles.rotation.y += 0.001;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        // Initialize all scenes
+        initScene1();
+        initScene2();
+        initScene3();
+        initScene4();
+        initScene5();
+
+        // Button handlers
+        document.getElementById('btn-scene1').addEventListener('click', () => {
+            switchScene(2);
+            setTimeout(() => switchScene(3), 8000);
+        });
+
+        document.getElementById('close-memory').addEventListener('click', () => {
+            document.getElementById('memory-popup').classList.remove('show');
+        });
+
+        // Auto-advance from scene 3 to 4
+        setTimeout(() => {
+            if(currentScene === 3) {
+                switchScene(4);
+                setTimeout(() => switchScene(5), 10000);
+            }
+        }, 15000);
+
+        // Yes button handler
+        document.getElementById('btn-yes').addEventListener('click', () => {
+            const button = document.getElementById('btn-yes');
+            button.style.display = 'none';
+            
+            // Create heart explosion
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            document.body.appendChild(explosion);
+            
+            for(let i = 0; i < 50; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'floating-heart';
+                heart.textContent = '❤️';
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.top = '100vh';
+                heart.style.animationDelay = Math.random() * 2 + 's';
+                explosion.appendChild(heart);
+            }
+            
+            setTimeout(() => {
+                const finalMsg = document.createElement('div');
+                finalMsg.className = 'final-message';
+                finalMsg.textContent = 'Forever Yours ❤️';
+                document.body.appendChild(finalMsg);
+            }, 2000);
+        });
+
+        // Responsive
+        window.addEventListener('resize', () => {
+            const canvases = ['canvas1', 'canvas2', 'canvas3', 'canvas4', 'canvas5'];
+            canvases.forEach(id => {
+                const canvas = document.getElementById(id);
+                if(canvas) {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
